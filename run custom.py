@@ -92,13 +92,42 @@ def main():
 
     args = parser.parse_args()
 
-    args.use_gpu = True if torch.backends.mps.is_built() and args.use_gpu else False
+    # mps is not working
+    # args.use_gpu = True if torch.backends.mps.is_built() and args.use_gpu else False
+    args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
 
     if args.use_gpu and args.use_multi_gpu:
         args.dvices = args.devices.replace(' ', '')
         device_ids = args.devices.split(',')
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
+
+    # overwrite args
+    # args.root_path = './dataset/ETT-small/'
+    # args.data_path = 'ETTh1.csv'
+    # args.task_id = 'ETTh1'
+    # args.data = 'ETTh1'
+    args.root_path = './dataset/crypto/'
+    args.data_path = 'BTCUSDT_60min.csv'
+    args.task_id = 'BTCUSDT_60min'
+    args.data = 'cryptoh1'
+    args.features = 'M'
+    args.seq_len = 96
+    args.label_len = 48
+    args.pred_len = 12
+    args.e_layers = 2
+    args.d_layers = 1
+    args.factor = 3
+    # args.enc_in = 7
+    # args.dec_in = 7
+    # args.c_out = 7
+    args.enc_in = 10
+    args.dec_in = 10
+    args.c_out = 10
+    args.des = 'Exp'
+    args.d_model = 512
+    args.itr = 3
+    args.train_stride = 2
 
     print('Args in experiment:')
     print(args)
@@ -168,3 +197,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

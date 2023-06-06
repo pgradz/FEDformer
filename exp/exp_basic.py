@@ -18,6 +18,9 @@ class Exp_Basic(object):
                 self.args.gpu) if not self.args.use_multi_gpu else self.args.devices
             device = torch.device('cuda:{}'.format(self.args.gpu))
             print('Use GPU: cuda:{}'.format(self.args.gpu))
+            # device = torch.device("mps")
+            # print('Use GPU: mps')
+
         else:
             device = torch.device('cpu')
             print('Use CPU')

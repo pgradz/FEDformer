@@ -119,7 +119,9 @@ class Exp_Main(Exp_Basic):
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
                 # decoder input
+                # creates empty tensor of shape (batch_size, pred_len, n_features)
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                # creates tensor with label_len acutal values and pred_len zeros
                 dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
 
                 # encoder - decoder
