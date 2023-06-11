@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 # this code defines encoder decoder network with LSTM layers
 
 class Encoder(nn.Module):
@@ -66,7 +67,7 @@ class Model(nn.Module):
 
         encoder_hidden = self.encoder(x_enc)
 
-        outputs = torch.zeros(self.batch_size, self.output_size, 1) 
+        outputs = torch.zeros(self.batch_size, self.output_size, 1, device=device) 
         decoder_input = x_enc[ :, -1, 3] # hard coded (3) for now column index. We take the last value of the target column of the encoder input
         decoder_input = decoder_input.unsqueeze(1).unsqueeze(1) # since above we take the last value of the target column, we need to add 2 dimensions to make it compatible with the decoder input
         decoder_hidden = encoder_hidden
