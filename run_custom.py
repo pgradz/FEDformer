@@ -3,6 +3,7 @@ import os
 import sys
 import torch
 from exp.exp_main import Exp_Main
+from exp.exp_seq2seq import Exp_Seq2Seq
 import random
 import numpy as np
 
@@ -110,7 +111,8 @@ def main():
     args.root_path = './dataset/crypto/'
     args.data_path = 'BTCUSDT_60min.csv'
     args.task_id = 'BTCUSDT_60min'
-    args.data = 'cryptoh1'
+    args.data = 'cryptoh1_seq2seq'
+    args.target = 'close'
     args.features = 'M'
     args.seq_len = 96
     args.label_len = 48
@@ -128,11 +130,15 @@ def main():
     args.d_model = 512
     args.itr = 3
     args.train_stride = 1
+    args.model = 'Lstm'
+    args.hidden_size = 128
+    args.input_size = 10
 
     print('Args in experiment:')
     print(args)
 
-    Exp = Exp_Main
+    # Exp = Exp_Main
+    Exp = Exp_Seq2Seq
 
     if args.is_training:
         for ii in range(args.itr):

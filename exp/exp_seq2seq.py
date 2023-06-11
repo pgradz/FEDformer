@@ -7,7 +7,7 @@ import torch.nn as nn
 from torch import optim
 from data_provider.data_factory import data_provider
 from exp.exp_basic import Exp_Basic
-from models import FEDformer, Autoformer, Informer, Transformer
+from models import FEDformer, Autoformer, Informer, Transformer, Lstm
 from utils.tools import EarlyStopping, adjust_learning_rate, visual
 from utils.metrics import metric
 
@@ -15,9 +15,9 @@ from utils.metrics import metric
 warnings.filterwarnings('ignore')
 
 
-class Exp_Main(Exp_Basic):
+class Exp_Seq2Seq(Exp_Basic):
     def __init__(self, args):
-        super(Exp_Main, self).__init__(args)
+        super(Exp_Seq2Seq, self).__init__(args)
 
     def _build_model(self):
         model_dict = {
@@ -25,6 +25,7 @@ class Exp_Main(Exp_Basic):
             'Autoformer': Autoformer,
             'Transformer': Transformer,
             'Informer': Informer,
+            'Lstm': Lstm
         }
         model = model_dict[self.args.model].Model(self.args).float()
 
@@ -50,28 +51,9 @@ class Exp_Main(Exp_Basic):
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float()
+                batch_y = batch_y.float().to(self.device)
 
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                f_dim = -1 if self.args.features == 'MS' else 0
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                outputs = self.model(batch_x).squeeze()
 
                 pred = outputs.detach().cpu()
                 true = batch_y.detach().cpu()
@@ -113,40 +95,13 @@ class Exp_Main(Exp_Basic):
                 iter_count += 1
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
-
                 batch_y = batch_y.float().to(self.device)
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
 
-                # decoder input
-                # creates empty tensor of shape (batch_size, pred_len, n_features)
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                # creates tensor with label_len acutal values and pred_len zeros
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                outputs = self.model(batch_x).squeeze()
 
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
-                        f_dim = -1 if self.args.features == 'MS' else 0
-                        batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                        loss = criterion(outputs, batch_y)
-                        train_loss.append(loss.item())
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                    f_dim = -1 if self.args.features == 'MS' else 0
-                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-
-                    loss = criterion(outputs, batch_y)
-                    train_loss.append(loss.item())
+                loss = criterion(outputs, batch_y)
+                train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
                     # print("\titers: {0}, epoch: {1} | loss: {2:.7f}".format(i + 1, epoch + 1, loss.item()))
