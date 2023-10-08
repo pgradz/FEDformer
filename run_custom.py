@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import datetime
 import torch
 from exp.exp_main import Exp_Main
 from exp.exp_seq2seq import Exp_Seq2Seq
@@ -116,16 +117,16 @@ def main():
     args.features = 'M'
     args.seq_len = 96
     args.label_len = 48
-    args.pred_len = 12
+    args.pred_len = 1
     args.e_layers = 2
     args.d_layers = 1
     args.factor = 3
     # args.enc_in = 7
     # args.dec_in = 7
     # args.c_out = 7
-    args.enc_in = 10
-    args.dec_in = 10
-    args.c_out = 10
+    args.enc_in = 33
+    args.dec_in = 33
+    args.c_out = 33
     args.des = 'Exp'
     args.d_model = 512
     args.itr = 3
@@ -133,6 +134,9 @@ def main():
     args.model = 'FEDformer'
     args.hidden_size = 128
     args.input_size = 10
+    args.train_end = datetime.datetime(2022, 1, 1, 0, 0, 0)
+    args.val_end = datetime.datetime(2022, 4, 1, 0, 0, 0)
+    args.test_end = datetime.datetime(2022, 7, 1, 0, 0, 0)
 
     print('Args in experiment:')
     print(args)

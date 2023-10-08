@@ -43,7 +43,10 @@ def data_provider(args, flag):
         features=args.features,
         target=args.target,
         timeenc=timeenc,
-        freq=freq
+        freq=freq,
+        train_end = args.train_end,
+        val_end = args.val_end,
+        test_end = args.test_end
     )
     print(flag, len(data_set))
 

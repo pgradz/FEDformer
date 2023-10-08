@@ -397,7 +397,8 @@ class Dataset_Pred(Dataset):
 class Dataset_crypto_hour(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='M', data_path='BTCUSDT_60min.csv',
-                 target='close', scale=True, timeenc=0, freq='h'):
+                 target='close', scale=True, timeenc=0, freq='h',
+                 train_end = 0, val_end = 0, test_end = 0):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -421,23 +422,35 @@ class Dataset_crypto_hour(Dataset):
 
         self.root_path = root_path
         self.data_path = data_path
+        self.train_end = train_end
+        self.val_end = val_end
+        self.test_end = test_end
+
         self.__read_data__()
 
     def __read_data__(self):
         self.scaler = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path,
-                                          self.data_path))
+                                          self.data_path), parse_dates=['datetime'])
+        df_raw.rename(columns={'datetime':'date'}, inplace=True)
+        #time related features are added later
+        df_raw.drop(columns=['hour_sin','hour_cos','weekday_sin','weekday_cos'], inplace=True)
+        # move target variable to the next
+        df_raw['y_pred'] = df_raw['y_pred'].shift(periods=1)
+        df_raw.dropna(inplace=True)
 
         # border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
         # border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
-        border1s = [0, 34978 - self.seq_len, 34978 + 4369 - self.seq_len]
-        border2s = [34978, 34978 + 4369, 34978 + 4369 + 5137]
+        index_train_end = df_raw.index[df_raw['date'] == self.train_end].values[0]
+        index_val_end = df_raw.index[df_raw['date'] == self.val_end].values[0]
+        index_test_end = df_raw.index[df_raw['date'] == self.test_end].values[0]
+        border1s = [0, index_train_end - self.seq_len, index_val_end - self.seq_len]
+        border2s = [index_train_end, index_val_end, index_test_end]
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
         if self.features == 'M' or self.features == 'MS':
-            cols_data = ['open', 'high', 'low','close','volume', 'EMA_3', 'EMA_5', 'EMA_10', 'EMA_20', 'RSI_14']
-            # cols_data = df_raw.columns[1:]
+            cols_data = df_raw.columns[1:]
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
