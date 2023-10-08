@@ -111,7 +111,7 @@ def main():
     args.root_path = './dataset/crypto/'
     args.data_path = 'BTCUSDT_60min.csv'
     args.task_id = 'BTCUSDT_60min'
-    args.data = 'cryptoh1_seq2seq'
+    args.data = 'cryptoh1'
     args.target = 'close'
     args.features = 'M'
     args.seq_len = 96
@@ -130,15 +130,15 @@ def main():
     args.d_model = 512
     args.itr = 3
     args.train_stride = 1
-    args.model = 'Lstm'
+    args.model = 'FEDformer'
     args.hidden_size = 128
     args.input_size = 10
 
     print('Args in experiment:')
     print(args)
 
-    # Exp = Exp_Main
-    Exp = Exp_Seq2Seq
+    Exp = Exp_Main
+    # Exp = Exp_Seq2Seq
 
     if args.is_training:
         for ii in range(args.itr):

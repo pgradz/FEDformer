@@ -517,6 +517,7 @@ class Dataset_crypto_hour_seq2seq(Dataset):
 
     def __read_data__(self):
         self.scaler = StandardScaler()
+        self.scaler_y = StandardScaler()
         df_raw = pd.read_csv(os.path.join(self.root_path,
                                           self.data_path))
 
@@ -539,6 +540,7 @@ class Dataset_crypto_hour_seq2seq(Dataset):
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
             self.scaler.fit(train_data.values)
+            self.scaler_y.fit(train_data.values[:, self.target_col_index].reshape(-1, 1))
             data = self.scaler.transform(df_data.values)
         else:
             data = df_data.values
@@ -560,6 +562,7 @@ class Dataset_crypto_hour_seq2seq(Dataset):
         self.data_stamp = data_stamp
 
     def __getitem__(self, index):
+        # this part was changed, it's ok
         s_begin = index
         s_end = s_begin + self.seq_len
         r_end = s_end + self.pred_len

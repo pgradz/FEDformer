@@ -153,51 +153,22 @@ class Exp_Seq2Seq(Exp_Basic):
         self.model.eval()
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
-                batch_x = batch_x.float().to(self.device)
-                batch_y = batch_y.float().to(self.device)
-
-                batch_x_mark = batch_x_mark.float().to(self.device)
-                batch_y_mark = batch_y_mark.float().to(self.device)
-
-                # decoder input
-                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
-                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
-                # encoder - decoder
-                if self.args.use_amp:
-                    with torch.cuda.amp.autocast():
-                        if self.args.output_attention:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-                        else:
-                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-                else:
-                    if self.args.output_attention:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
-
-                    else:
-                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
-
-                f_dim = -1 if self.args.features == 'MS' else 0
-
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                outputs = outputs.detach().cpu().numpy()
-                batch_y = batch_y.detach().cpu().numpy()
-
-                pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
-                true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
-
+                batch_x = batch_x.float().to(device)
+                batch_y = batch_y.float().to(device)    
+                outputs = model(batch_x).squeeze()  
+                # print('outputs shape:', outputs.shape)
+                pred = outputs.detach().cpu()
+                true = batch_y.detach().cpu()
                 preds.append(pred)
-                trues.append(true)
-                if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+                trues.append(true)  
 
         preds = np.array(preds)
         trues = np.array(trues)
         print('test shape:', preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+        preds = np.stack(preds, axis=0)
+        preds = preds.reshape(-1, preds.shape[-1], 1)
+        trues = np.stack(trues, axis=0)
+        trues = trues.reshape(-1, trues.shape[-1], 1)
         print('test shape:', preds.shape, trues.shape)
 
         # result save
