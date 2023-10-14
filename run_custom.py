@@ -97,6 +97,7 @@ def main():
     # mps is not working
     # args.use_gpu = True if torch.backends.mps.is_built() and args.use_gpu else False
     args.use_gpu = True if torch.cuda.is_available() and args.use_gpu else False
+    print('args use_gpu', args.use_gpu)
 
     if args.use_gpu and args.use_multi_gpu:
         args.dvices = args.devices.replace(' ', '')
@@ -113,8 +114,8 @@ def main():
     args.data_path = 'BTCUSDT_60min.csv'
     args.task_id = 'BTCUSDT_60min'
     args.data = 'cryptoh1'
-    args.target = 'close'
-    args.features = 'M'
+    args.target = 'y_pred'
+    args.features = 'S'
     args.seq_len = 96
     args.label_len = 48
     args.pred_len = 1
@@ -124,9 +125,9 @@ def main():
     # args.enc_in = 7
     # args.dec_in = 7
     # args.c_out = 7
-    args.enc_in = 33
-    args.dec_in = 33
-    args.c_out = 33
+    args.enc_in = 1
+    args.dec_in = 1
+    args.c_out = 1
     args.des = 'Exp'
     args.d_model = 512
     args.itr = 3
