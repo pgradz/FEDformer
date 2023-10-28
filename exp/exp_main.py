@@ -2,6 +2,7 @@ import os
 import time
 import warnings
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 from torch import optim
@@ -41,14 +42,19 @@ class Exp_Main(Exp_Basic):
         return model_optim
 
     def _select_criterion(self):
-        criterion = nn.MSELoss()
+        if self.args.classifier:
+            criterion = nn.BCELoss()
+        else:
+            criterion = nn.MSELoss()
         return criterion
 
     def vali(self, vali_data, vali_loader, criterion):
         total_loss = []
+        correct = 0
+        total = 0
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(vali_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark, cls_y, _) in enumerate(vali_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float()
 
@@ -72,16 +78,29 @@ class Exp_Main(Exp_Basic):
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 f_dim = -1 if self.args.features == 'MS' else 0
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                outputs = outputs.to(torch.float64)
+                cls_y  = cls_y.to(torch.float64)
+
+                # it can happen that prediction is Nan
+                nan_mask = torch.isnan(outputs)
+                num_nans = torch.sum(nan_mask).item()
+                if num_nans > 0:
+                    print('Warning: {} NaNs in validation'.format(num_nans))
+                    outputs[nan_mask] = 0.5
 
                 pred = outputs.detach().cpu()
-                true = batch_y.detach().cpu()
+                true = cls_y.detach().cpu()
+                predicted_class = (pred > 0.5).float()
+                total += true.size(0)
+                correct += (predicted_class == true).sum().item()
 
                 loss = criterion(pred, true)
 
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
+        accuracy = (100 * correct / total)
         self.model.train()
-        return total_loss
+        return total_loss, accuracy
 
     def train(self, setting):
         train_data, train_loader = self._get_data(flag='train')
@@ -109,7 +128,7 @@ class Exp_Main(Exp_Basic):
 
             self.model.train()
             epoch_time = time.time()
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(train_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark, cls_y, _) in enumerate(train_loader):
                 iter_count += 1
                 model_optim.zero_grad()
                 batch_x = batch_x.float().to(self.device)
@@ -142,10 +161,18 @@ class Exp_Main(Exp_Basic):
                     else:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
 
+                    # check if output returns NaN
+                    nan_mask = torch.isnan(outputs)
+                    num_nans = torch.sum(nan_mask).item()
+                    if num_nans > 0:
+                        print('Warning: {} NaNs in training'.format(num_nans))
+                        outputs[nan_mask] = 0.5
+
                     f_dim = -1 if self.args.features == 'MS' else 0
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-
-                    loss = criterion(outputs, batch_y)
+                    outputs = outputs.to(torch.float64)
+                    cls_y  = cls_y.to(torch.float64)
+                    loss = criterion(outputs, cls_y)
                     train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -166,11 +193,11 @@ class Exp_Main(Exp_Basic):
 
             print("Epoch: {} cost time: {}".format(epoch + 1, time.time() - epoch_time))
             train_loss = np.average(train_loss)
-            vali_loss = self.vali(vali_data, vali_loader, criterion)
-            test_loss = self.vali(test_data, test_loader, criterion)
+            vali_loss, val_accuracy = self.vali(vali_data, vali_loader, criterion)
+            test_loss, test_accuracy = self.vali(test_data, test_loader, criterion)
 
-            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f}".format(
-                epoch + 1, train_steps, train_loss, vali_loss, test_loss))
+            print("Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} Test Loss: {4:.7f} Val accuracy: {5:.7f} Test accuracy: {6:.7f}".format(
+                epoch + 1, train_steps, train_loss, vali_loss, test_loss, val_accuracy, test_accuracy))
             early_stopping(vali_loss, self.model, path)
             if early_stopping.early_stop:
                 print("Early stopping")
@@ -191,13 +218,16 @@ class Exp_Main(Exp_Basic):
 
         preds = []
         trues = []
+        time_indices = []
+        correct = 0
+        total = 0
         folder_path = './test_results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
         self.model.eval()
         with torch.no_grad():
-            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark, cls_y, time_index) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
                 batch_y = batch_y.float().to(self.device)
 
@@ -224,46 +254,80 @@ class Exp_Main(Exp_Basic):
                 f_dim = -1 if self.args.features == 'MS' else 0
 
                 batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                outputs = outputs.to(torch.float64)
+                cls_y  = cls_y.to(torch.float64)
+                time_index = time_index.detach().cpu().numpy()
                 outputs = outputs.detach().cpu().numpy()
-                batch_y = batch_y.detach().cpu().numpy()
-
+                batch_y = cls_y.detach().cpu().numpy()
                 pred = outputs  # outputs.detach().cpu().numpy()  # .squeeze()
                 true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
 
+                predicted_class = (pred > 0.5)
+                total += true.shape[0]
+                correct += (predicted_class == true).sum().item()
+
                 preds.append(pred)
                 trues.append(true)
-                if i % 20 == 0:
-                    input = batch_x.detach().cpu().numpy()
-                    gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
-                    pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
-                    visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
+                time_indices.append(time_index)
+                # if i % 20 == 0:
+                #     input = batch_x.detach().cpu().numpy()
+                #     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
+                #     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
+                #     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
 
         preds = np.array(preds)
         trues = np.array(trues)
+        time_indices = np.array(time_indices)
         print('test shape:', preds.shape, trues.shape)
-        preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
+        preds = np.squeeze(preds)
+        preds = preds.reshape(-1)
+        trues = np.squeeze(trues)
+        trues = trues.reshape(-1)
+        time_indices = np.squeeze(time_indices)
+        time_indices = time_indices.reshape(-1)
+        time_stamps = test_data.date_data[time_indices]
+        time_stamps = time_stamps.reshape(-1)
+        # preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
+        # trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
         print('test shape:', preds.shape, trues.shape)
+        df = pd.DataFrame({'preds': preds, 'trues': trues, 'time_stamps': time_stamps})
+
+        lower_bounds = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
+        upper_bounds = [1 - lower for lower in lower_bounds]
+        for lower_bound, upper_bound in zip(lower_bounds, upper_bounds):
+            self.accuracy_by_threshold(df, lower_bound, upper_bound)
 
         # result save
         folder_path = './results/' + setting + '/'
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
-
-        mae, mse, rmse, mape, mspe = metric(preds, trues)
-        print('mse:{}, mae:{}'.format(mse, mae))
+        accuracy = (100 * correct / total)
+        # mae, mse, rmse, mape, mspe = metric(preds, trues)
+        # print('mse:{}, mae:{}'.format(mse, mae))
+        print('accuracy:{}'.format(accuracy))
         f = open("result.txt", 'a')
         f.write(setting + "  \n")
-        f.write('mse:{}, mae:{}'.format(mse, mae))
+        f.write('accuracy:{}'.format(accuracy))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+        df.to_csv(folder_path + 'predictions.csv')
 
         return
+
+    @staticmethod
+    def accuracy_by_threshold(df, lower_bound, upper_bound):
+            
+        df['y_pred'] = df['preds'].apply(lambda x: 1 if x > 0.5 else 0)
+        predictions_above_threshold = df.loc[(df['preds'] < lower_bound) | (df['preds'] > upper_bound)]
+        accuracy = (predictions_above_threshold['trues'] == predictions_above_threshold['y_pred']).mean()
+        print('Accuracy for predictions outside of [{}, {}]: {:.2f}%'.format(lower_bound, upper_bound, 100 * accuracy))
+        return None
+
 
     def predict(self, setting, load=False):
         pred_data, pred_loader = self._get_data(flag='pred')

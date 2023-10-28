@@ -115,6 +115,13 @@ class Model(nn.Module):
             projection=nn.Linear(configs.d_model, configs.c_out, bias=True)
         )
 
+        if configs.classifier:
+            self.classifier = True
+            self.classifier = nn.Linear(configs.dec_in, 1, bias=True)
+            self.sigmoid = nn.Sigmoid()
+
+
+
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
         # decomp init
@@ -136,10 +143,16 @@ class Model(nn.Module):
         dec_out = trend_part + seasonal_part
 
         if self.output_attention:
-            return dec_out[:, -self.pred_len:, :], attns
+            output =  dec_out[:, -self.pred_len:, :], attns
         else:
-            return dec_out[:, -self.pred_len:, :]  # [B, L, D]
+            output = dec_out[:, -self.pred_len:, :]  # [B, L, D]
 
+        # won't work with self.output_attention:
+        if self.classifier:
+            output = output.squeeze()
+            output = self.sigmoid(self.classifier(output))
+
+        return output
 
 if __name__ == '__main__':
     class Configs(object):

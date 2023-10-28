@@ -111,11 +111,11 @@ def main():
     # args.task_id = 'ETTh1'
     # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_60min.csv'
-    args.task_id = 'BTCUSDT_60min'
+    args.data_path = 'BTCUSDT_720min.csv'
+    args.task_id = 'BTCUSDT_720min'
     args.data = 'cryptoh1'
     args.target = 'y_pred'
-    args.features = 'S'
+    args.features = 'M'
     args.seq_len = 96
     args.label_len = 48
     args.pred_len = 1
@@ -125,8 +125,8 @@ def main():
     # args.enc_in = 7
     # args.dec_in = 7
     # args.c_out = 7
-    args.enc_in = 1
-    args.dec_in = 1
+    args.enc_in = 32
+    args.dec_in = 32
     args.c_out = 1
     args.des = 'Exp'
     args.d_model = 512
@@ -138,6 +138,9 @@ def main():
     args.train_end = datetime.datetime(2022, 1, 1, 0, 0, 0)
     args.val_end = datetime.datetime(2022, 4, 1, 0, 0, 0)
     args.test_end = datetime.datetime(2022, 7, 1, 0, 0, 0)
+    args.classifier = True
+    # for debug
+    args.train_epochs = 10
 
     print('Args in experiment:')
     print(args)

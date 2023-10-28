@@ -436,7 +436,10 @@ class Dataset_crypto_hour(Dataset):
         #time related features are added later
         df_raw.drop(columns=['hour_sin','hour_cos','weekday_sin','weekday_cos'], inplace=True)
         # move target variable to the next
-        df_raw['y_pred'] = df_raw['y_pred'].shift(periods=1)
+        # df_raw['y_pred'] = df_raw['y_pred'].shift(periods=1)
+        # binarize the target
+        df_raw['y_pred'] = [1 if x > 1 else 0 for x in df_raw['y_pred']]
+        target_index = df_raw.columns.get_loc("y_pred")
         df_raw.dropna(inplace=True)
 
         # border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
@@ -449,9 +452,14 @@ class Dataset_crypto_hour(Dataset):
         border1 = border1s[self.set_type]
         border2 = border2s[self.set_type]
 
+        self.data_y_cls = df_raw.iloc[border1:border2, target_index:target_index+1].values
+
         if self.features == 'M' or self.features == 'MS':
             cols_data = df_raw.columns[1:]
+            cols_data = cols_data.to_list()
+            cols_data.remove('y_pred')
             df_data = df_raw[cols_data]
+            # target_index = target_index - 1
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
 
@@ -464,6 +472,7 @@ class Dataset_crypto_hour(Dataset):
 
         df_stamp = df_raw[['date']][border1:border2]
         df_stamp['date'] = pd.to_datetime(df_stamp.date)
+        self.date_data = df_stamp.reset_index(drop=True).values
         if self.timeenc == 0:
             df_stamp['month'] = df_stamp.date.apply(lambda row: row.month, 1)
             df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
@@ -477,19 +486,22 @@ class Dataset_crypto_hour(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+    
 
     def __getitem__(self, index):
-        s_begin = index
-        s_end = s_begin + self.seq_len
-        r_begin = s_end - self.label_len
-        r_end = r_begin + self.label_len + self.pred_len
 
-        seq_x = self.data_x[s_begin:s_end]
-        seq_y = self.data_y[r_begin:r_end]
-        seq_x_mark = self.data_stamp[s_begin:s_end]
-        seq_y_mark = self.data_stamp[r_begin:r_end]
+        s_begin = index # 0
+        s_end = s_begin + self.seq_len # 96
+        r_begin = s_end - self.label_len # 48
+        r_end = r_begin + self.label_len + self.pred_len # 97
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        seq_x = self.data_x[s_begin:s_end] # 0:95
+        seq_y = self.data_y[r_begin:r_end] # 48:96
+        seq_x_mark = self.data_stamp[s_begin:s_end] # 0:95
+        seq_y_mark = self.data_stamp[r_begin:r_end] # 48:96
+        cls_y = self.data_y_cls[r_end-2] # 95 - target in row change between row 95 and 96. line 439 is commented
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark, cls_y, r_end-2
         # return seq_x, seq_y, seq_x_mark, seq_y_mark, index # for debug to check that indexes in Subset are correct
 
     def __len__(self):
