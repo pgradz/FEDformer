@@ -111,8 +111,8 @@ def main():
     # args.task_id = 'ETTh1'
     # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_720min.csv'
-    args.task_id = 'BTCUSDT_720min'
+    args.data_path = 'BTCUSDT_60min.csv'
+    args.task_id = 'BTCUSDT_60min'
     args.data = 'cryptoh1'
     args.target = 'y_pred'
     args.features = 'M'
@@ -135,9 +135,10 @@ def main():
     args.model = 'FEDformer'
     args.hidden_size = 128
     args.input_size = 10
-    args.train_end = datetime.datetime(2022, 1, 1, 0, 0, 0)
-    args.val_end = datetime.datetime(2022, 4, 1, 0, 0, 0)
-    args.test_end = datetime.datetime(2022, 7, 1, 0, 0, 0)
+    args.train_end = datetime.datetime(2022, 7, 1, 0, 0, 0)
+    args.val_end = datetime.datetime(2022, 10, 1, 0, 0, 0)
+    args.test_end = datetime.datetime(2023, 1, 1, 0, 0, 0)
+    test_end_str = args.test_end.strftime("%Y%m%d")
     args.classifier = True
     # for debug
     args.train_epochs = 10
@@ -151,7 +152,7 @@ def main():
     if args.is_training:
         for ii in range(args.itr):
             # setting record of experiments
-            setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
+            setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(
                 args.task_id,
                 args.model,
                 args.mode_select,
@@ -169,6 +170,7 @@ def main():
                 args.factor,
                 args.embed,
                 args.distil,
+                test_end_str,
                 args.des,
                 ii)
 
@@ -186,7 +188,7 @@ def main():
             torch.cuda.empty_cache()
     else:
         ii = 0
-        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(args.task_id,
+        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(args.task_id,
                                                                                                       args.model,
                                                                                                       args.data,
                                                                                                       args.features,
@@ -201,6 +203,7 @@ def main():
                                                                                                       args.factor,
                                                                                                       args.embed,
                                                                                                       args.distil,
+                                                                                                      test_end_str,
                                                                                                       args.des, ii)
 
         exp = Exp(args)  # set experiments
