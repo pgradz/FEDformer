@@ -140,7 +140,7 @@ def main():
     test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
     args.classifier = True
     # for debug
-    args.train_epochs = 1
+    args.train_epochs = 10
 
     print('Args in experiment:')
     print(args)
