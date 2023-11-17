@@ -311,7 +311,7 @@ class Exp_Main(Exp_Basic):
         # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
-        df.to_csv(folder_path + 'predictions.csv')
+        df.to_csv(folder_path + 'predictions_Exp_{}_{}.csv'.format(self.args.ii, self.args.test_end_str))
 
         return
 
