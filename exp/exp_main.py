@@ -268,7 +268,10 @@ class Exp_Main(Exp_Basic):
                 predicted_class = (pred > 0.5)
                 total += true.shape[0]
                 correct += (predicted_class == true).sum().item()
-
+                
+                pred = np.squeeze(pred.tolist()).tolist()
+                true = np.squeeze(true.tolist()).tolist()
+                time_index = np.squeeze(time_index.tolist()).tolist()
                 preds.append(pred)
                 trues.append(true)
                 time_indices.append(time_index)
@@ -278,21 +281,11 @@ class Exp_Main(Exp_Basic):
                 #     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
                 #     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
 
-        preds = np.array(preds)
-        trues = np.array(trues)
-        time_indices = np.array(time_indices)
-        print('test shape:', preds.shape, trues.shape)
-        preds = np.squeeze(preds)
-        preds = preds.reshape(-1)
-        trues = np.squeeze(trues)
-        trues = trues.reshape(-1)
-        time_indices = np.squeeze(time_indices)
-        time_indices = time_indices.reshape(-1)
+        preds = [item for sublist in preds for item in sublist]
+        trues = [item for sublist in trues for item in sublist]
+        time_indices = [item for sublist in time_indices for item in sublist]
         time_stamps = test_data.date_data[time_indices]
         time_stamps = time_stamps.reshape(-1)
-        # preds = preds.reshape(-1, preds.shape[-2], preds.shape[-1])
-        # trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
-        print('test shape:', preds.shape, trues.shape)
         df = pd.DataFrame({'preds': preds, 'trues': trues, 'time_stamps': time_stamps})
 
         lower_bounds = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]

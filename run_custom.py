@@ -111,8 +111,8 @@ def main():
     # args.task_id = 'ETTh1'
     # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_60min.csv'
-    args.task_id = 'BTCUSDT_60min'
+    args.data_path = 'BTCUSDT_720min.csv'
+    args.task_id = 'BTCUSDT_720min'
     args.data = 'cryptoh1'
     args.target = 'y_pred'
     args.features = 'M'
@@ -135,81 +135,85 @@ def main():
     args.model = 'FEDformer'
     args.hidden_size = 128
     args.input_size = 10
-    args.train_end = datetime.datetime(2022, 7, 1, 0, 0, 0)
-    args.val_end = datetime.datetime(2022, 10, 1, 0, 0, 0)
-    args.test_end = datetime.datetime(2023, 1, 1, 0, 0, 0)
-    test_end_str = args.test_end.strftime("%Y%m%d")
+    train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
+    val_end = [datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
+    test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
     args.classifier = True
     # for debug
-    args.train_epochs = 10
+    args.train_epochs = 1
 
     print('Args in experiment:')
     print(args)
 
     Exp = Exp_Main
     # Exp = Exp_Seq2Seq
+    
+    for j, dates in enumerate(zip(train_end, val_end, test_end)):
+        args.train_end = dates[0]
+        args.val_end = dates[1]
+        args.test_end = dates[2]
+        test_end_str = args.test_end.strftime("%Y%m%d")
+        if args.is_training:
+            for ii in range(args.itr):
+                # setting record of experiments
+                setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(
+                    args.task_id,
+                    args.model,
+                    args.mode_select,
+                    args.modes,
+                    args.data,
+                    args.features,
+                    args.seq_len,
+                    args.label_len,
+                    args.pred_len,
+                    args.d_model,
+                    args.n_heads,
+                    args.e_layers,
+                    args.d_layers,
+                    args.d_ff,
+                    args.factor,
+                    args.embed,
+                    args.distil,
+                    test_end_str,
+                    args.des,
+                    ii)
 
-    if args.is_training:
-        for ii in range(args.itr):
-            # setting record of experiments
-            setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(
-                args.task_id,
-                args.model,
-                args.mode_select,
-                args.modes,
-                args.data,
-                args.features,
-                args.seq_len,
-                args.label_len,
-                args.pred_len,
-                args.d_model,
-                args.n_heads,
-                args.e_layers,
-                args.d_layers,
-                args.d_ff,
-                args.factor,
-                args.embed,
-                args.distil,
-                test_end_str,
-                args.des,
-                ii)
+                exp = Exp(args)  # set experiments
+                print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+                exp.train(setting)
+
+                print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                exp.test(setting)
+
+                if args.do_predict:
+                    print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                    exp.predict(setting, True)
+
+                torch.cuda.empty_cache()
+        else:
+            ii = 0
+            setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(args.task_id,
+                                                                                                        args.model,
+                                                                                                        args.data,
+                                                                                                        args.features,
+                                                                                                        args.seq_len,
+                                                                                                        args.label_len,
+                                                                                                        args.pred_len,
+                                                                                                        args.d_model,
+                                                                                                        args.n_heads,
+                                                                                                        args.e_layers,
+                                                                                                        args.d_layers,
+                                                                                                        args.d_ff,
+                                                                                                        args.factor,
+                                                                                                        args.embed,
+                                                                                                        args.distil,
+                                                                                                        test_end_str,
+                                                                                                        args.des, ii)
 
             exp = Exp(args)  # set experiments
-            print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-            exp.train(setting)
-
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-            exp.test(setting)
-
-            if args.do_predict:
-                print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-                exp.predict(setting, True)
-
+            exp.test(setting, test=1)
             torch.cuda.empty_cache()
-    else:
-        ii = 0
-        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(args.task_id,
-                                                                                                      args.model,
-                                                                                                      args.data,
-                                                                                                      args.features,
-                                                                                                      args.seq_len,
-                                                                                                      args.label_len,
-                                                                                                      args.pred_len,
-                                                                                                      args.d_model,
-                                                                                                      args.n_heads,
-                                                                                                      args.e_layers,
-                                                                                                      args.d_layers,
-                                                                                                      args.d_ff,
-                                                                                                      args.factor,
-                                                                                                      args.embed,
-                                                                                                      args.distil,
-                                                                                                      test_end_str,
-                                                                                                      args.des, ii)
-
-        exp = Exp(args)  # set experiments
-        print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-        exp.test(setting, test=1)
-        torch.cuda.empty_cache()
 
 
 if __name__ == "__main__":
