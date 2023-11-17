@@ -152,11 +152,12 @@ def main():
         args.train_end = dates[0]
         args.val_end = dates[1]
         args.test_end = dates[2]
-        test_end_str = args.test_end.strftime("%Y%m%d")
+        args.test_end_str = args.test_end.strftime("%Y%m%d")
         if args.is_training:
             for ii in range(args.itr):
+                args.ii = ii
                 # setting record of experiments
-                setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(
+                setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(
                     args.task_id,
                     args.model,
                     args.mode_select,
@@ -173,10 +174,7 @@ def main():
                     args.d_ff,
                     args.factor,
                     args.embed,
-                    args.distil,
-                    test_end_str,
-                    args.des,
-                    ii)
+                    args.distil)
 
                 exp = Exp(args)  # set experiments
                 print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
@@ -192,7 +190,8 @@ def main():
                 torch.cuda.empty_cache()
         else:
             ii = 0
-            setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}_{}'.format(args.task_id,
+            args.ii = ii
+            setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(args.task_id,
                                                                                                         args.model,
                                                                                                         args.data,
                                                                                                         args.features,
@@ -206,9 +205,8 @@ def main():
                                                                                                         args.d_ff,
                                                                                                         args.factor,
                                                                                                         args.embed,
-                                                                                                        args.distil,
-                                                                                                        test_end_str,
-                                                                                                        args.des, ii)
+                                                                                                        args.distil)
+                                                                                                        
 
             exp = Exp(args)  # set experiments
             print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
