@@ -219,7 +219,7 @@ def main():
     run_analysis(args, setting)
     daily_records = os.path.join(args.root_path, f'{args.currency}_time_aggregated_1440min.csv')
     results_folder = './results/' + setting + '/'
-    performance_evaluator = PerformanceEvaluator(results_folder, daily_records)
+    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting)
     performance_evaluator.run()
 
 
