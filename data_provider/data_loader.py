@@ -445,6 +445,7 @@ class Dataset_crypto_hour(Dataset):
         # border1s = [0, 12 * 30 * 24 - self.seq_len, 12 * 30 * 24 + 4 * 30 * 24 - self.seq_len]
         # border2s = [12 * 30 * 24, 12 * 30 * 24 + 4 * 30 * 24, 12 * 30 * 24 + 8 * 30 * 24]
         index_train_end = df_raw.index[df_raw['date'] <= self.train_end].max()
+
         index_val_end = df_raw.index[df_raw['date'] <= self.val_end].max()
         index_test_end = df_raw.index[df_raw['date'] <= self.test_end].max()
         border1s = [0, index_train_end - self.seq_len, index_val_end - self.seq_len]
