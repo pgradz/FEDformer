@@ -434,7 +434,8 @@ class Dataset_crypto_hour(Dataset):
                                           self.data_path), parse_dates=['datetime'])
         df_raw.rename(columns={'datetime':'date'}, inplace=True)
         #time related features are added later
-        df_raw.drop(columns=['hour_sin','hour_cos','weekday_sin','weekday_cos'], inplace=True)
+        columns_to_drop = [col for col in ['hour_sin','hour_cos','weekday_sin','weekday_cos'] if col in df_raw.columns]
+        df_raw.drop(columns=columns_to_drop, inplace=True)
         # move target variable to the next
         # df_raw['y_pred'] = df_raw['y_pred'].shift(periods=1)
         # binarize the target

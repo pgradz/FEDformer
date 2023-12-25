@@ -8,7 +8,7 @@ from exp.exp_seq2seq import Exp_Seq2Seq
 from analysis.results_analysis import run_analysis
 import random
 import numpy as np
-from ml_investing_wne.PerformanceEvaluator import PerformanceEvaluator
+from ml_investing_wne.performance_evaluator import PerformanceEvaluator
 
 
 def main():
@@ -93,6 +93,8 @@ def main():
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     parser.add_argument('--devices', type=str, default='0,1', help='device ids of multi gpus')
+    
+    parser.add_argument('--currency', type=str, default='ETHUSDT', help='cryptocurrency')
 
     args = parser.parse_args()
 
@@ -108,15 +110,11 @@ def main():
         args.gpu = args.device_ids[0]
 
     # overwrite args
-    # args.root_path = './dataset/ETT-small/'
-    # args.data_path = 'ETTh1.csv'
-    # args.task_id = 'ETTh1'
-    # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_720min.csv'
-    args.task_id = 'BTCUSDT_720min'
-    args.currency = 'BTCUSDT'
-    args.data = 'cryptoh1'
+    # args.data_path = 'ETHUSDT_1440min.csv'
+    # args.task_id = 'ETHUSDT_1440min_c_out32'
+    # args.currency = 'ETHUSDT'
+    # args.data = 'cryptoh1'
     args.target = 'y_pred'
     args.features = 'M'
     args.seq_len = 96
@@ -125,22 +123,21 @@ def main():
     args.e_layers = 2
     args.d_layers = 1
     args.factor = 3
-    # args.enc_in = 7
-    # args.dec_in = 7
-    # args.c_out = 7
     args.enc_in = 32
     args.dec_in = 32
-    args.c_out = 1
+    args.c_out = 32
     args.des = 'Exp'
     args.d_model = 512
     args.itr = 3
     args.train_stride = 1
-    args.model = 'FEDformer'
-    args.hidden_size = 128
-    args.input_size = 10
+    # args.model = 'FEDformer'
+
     train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
     val_end = [datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
     test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
+
+
+
     args.classifier = True
     # for debug
     args.train_epochs = 10
@@ -149,7 +146,7 @@ def main():
     print(args)
 
     Exp = Exp_Main
-    # Exp = Exp_Seq2Seq
+
     
     for j, dates in enumerate(zip(train_end, val_end, test_end)):
         args.train_end = dates[0]
@@ -179,18 +176,18 @@ def main():
                     args.embed,
                     args.distil)
 
-                # exp = Exp(args)  # set experiments
-                # print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
-                # exp.train(setting)
+                exp = Exp(args)  # set experiments
+                print('>>>>>>>start training : {}>>>>>>>>>>>>>>>>>>>>>>>>>>'.format(setting))
+                exp.train(setting)
 
-                # print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-                # exp.test(setting)
+                print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                exp.test(setting)
 
-                # if args.do_predict:
-                #     print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
-                #     exp.predict(setting, True)
+                if args.do_predict:
+                    print('>>>>>>>predicting : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))
+                    exp.predict(setting, True)
 
-                # torch.cuda.empty_cache()
+                torch.cuda.empty_cache()
         else:
             ii = 0
             args.ii = ii
@@ -219,7 +216,7 @@ def main():
     run_analysis(args, setting)
     daily_records = os.path.join(args.root_path, f'{args.currency}_time_aggregated_1440min.csv')
     results_folder = './results/' + setting + '/'
-    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting)
+    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting, cost=0.001)
     performance_evaluator.run()
 
 

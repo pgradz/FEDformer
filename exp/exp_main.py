@@ -94,6 +94,9 @@ class Exp_Main(Exp_Basic):
                 predicted_class = (pred > 0.5).float()
                 total += true.size(0)
                 correct += (predicted_class == true).sum().item()
+                # if it happens that there is one obs 2d collapses to 1d, this fixes it
+                if pred.shape == torch.Size([1]):
+                    pred = pred.unsqueeze(1)
 
                 loss = criterion(pred, true)
 
@@ -173,6 +176,8 @@ class Exp_Main(Exp_Basic):
                     f_dim = -1 if self.args.features == 'MS' else 0
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
                     outputs = outputs.to(torch.float64)
+                    if outputs.shape == torch.Size([1]):
+                        outputs = outputs.unsqueeze(1)
                     cls_y  = cls_y.to(torch.float64)
                     loss = criterion(outputs, cls_y)
                     train_loss.append(loss.item())
@@ -280,10 +285,13 @@ class Exp_Main(Exp_Basic):
                 #     gt = np.concatenate((input[0, :, -1], true[0, :, -1]), axis=0)
                 #     pd = np.concatenate((input[0, :, -1], pred[0, :, -1]), axis=0)
                 #     visual(gt, pd, os.path.join(folder_path, str(i) + '.pdf'))
-
-        preds = [item for sublist in preds for item in sublist]
-        trues = [item for sublist in trues for item in sublist]
-        time_indices = [item for sublist in time_indices for item in sublist]
+         # it can happen that last batch contain one obs and then it's not in a list - this fixes it
+        preds_list = [item if isinstance(item, list) else [item] for item in preds]
+        preds = [item for sublist in preds_list for item in sublist]
+        trues_list = [item if isinstance(item, list) else [item] for item in trues]
+        trues = [item for sublist in trues_list for item in sublist]
+        time_indices_list = [item if isinstance(item, list) else [item] for item in time_indices]
+        time_indices = [item for sublist in time_indices_list for item in sublist]
         time_stamps = test_data.date_data[time_indices]
         time_stamps = time_stamps.reshape(-1)
         df = pd.DataFrame({'preds': preds, 'trues': trues, 'time_stamps': time_stamps})
