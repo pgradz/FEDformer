@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred, Dataset_crypto_hour, Dataset_crypto_hour_seq2seq
+from data_provider.data_loader import Dataset_ETT_hour, Dataset_ETT_minute, Dataset_Custom, Dataset_Pred, Dataset_crypto_hour, Dataset_crypto_hour_seq2seq, Dataset_crypto_triple_barrier
 from torch.utils.data import DataLoader, Subset
 
 data_dict = {
@@ -10,7 +10,9 @@ data_dict = {
     'ETTm2': Dataset_ETT_minute,
     'custom': Dataset_Custom,
     'cryptoh1': Dataset_crypto_hour,
-    'cryptoh1_seq2seq': Dataset_crypto_hour_seq2seq
+    'cryptoh1_seq2seq': Dataset_crypto_hour_seq2seq,
+    'crytpo_triple_barrier': Dataset_crypto_triple_barrier,
+
 }
 
 

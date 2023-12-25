@@ -60,7 +60,7 @@ class Exp_Main(Exp_Basic):
 
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
-                cls_y = cls_y.to(self.device)
+                cls_y = cls_y.float().to(self.device)
 
                 # decoder input
                 dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
@@ -78,24 +78,42 @@ class Exp_Main(Exp_Basic):
                     else:
                         outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
                 f_dim = -1 if self.args.features == 'MS' else 0
-                batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+
                 outputs = outputs.to(torch.float64)
                 cls_y  = cls_y.to(torch.float64)
 
-                # it can happen that prediction is Nan
-                nan_mask = torch.isnan(outputs)
-                num_nans = torch.sum(nan_mask).item()
-                if num_nans > 0:
-                    print('Warning: {} NaNs in validation'.format(num_nans))
-                    outputs[nan_mask] = 0.5
+                if not self.args.classifier:
+                    # close price is at position 1
+                    last_close_price = batch_y[:,  -self.args.pred_len-1, 1].to(self.device)
+                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    close_price_pred = outputs[:, :, 1]
+                    positive_diff = abs(close_price_pred.max(dim=1)[0] - last_close_price)
+                    negative_diff = abs(close_price_pred.min(dim=1)[0] - last_close_price)
+                    direction = (positive_diff > negative_diff).float()
+                    direction = direction.unsqueeze(1)
+                    true_cls = cls_y.detach().cpu()
+                    total += true_cls.size(0)
+                    correct += (direction == true_cls).sum().item()
 
-                pred = outputs.detach().cpu()
-                true = cls_y.detach().cpu()
-                predicted_class = (pred > 0.5).float()
-                total += true.size(0)
-                correct += (predicted_class == true).sum().item()
+                    pred = outputs.detach().cpu()
+                    true = batch_y.detach().cpu()
+                    loss = criterion(pred, true)
 
-                loss = criterion(pred, true)
+                else:
+                    # it can happen that prediction is Nan
+                    batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    nan_mask = torch.isnan(outputs)
+                    num_nans = torch.sum(nan_mask).item()
+                    if num_nans > 0:
+                        print('Warning: {} NaNs in validation'.format(num_nans))
+                        outputs[nan_mask] = 0.5
+
+                    pred = outputs.detach().cpu()
+                    true = cls_y.detach().cpu()
+                    predicted_class = (pred > 0.5).float()
+                    total += true.size(0)
+                    correct += (predicted_class == true).sum().item()
+                    loss = criterion(pred, true)
 
                 total_loss.append(loss)
         total_loss = np.average(total_loss)
@@ -137,7 +155,7 @@ class Exp_Main(Exp_Basic):
                 batch_y = batch_y.float().to(self.device)
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
-                cls_y = cls_y.to(self.device)
+                cls_y = cls_y.float().to(self.device)
 
                 # decoder input
                 # creates empty tensor of shape (batch_size, pred_len, n_features)
@@ -172,9 +190,10 @@ class Exp_Main(Exp_Basic):
 
                     f_dim = -1 if self.args.features == 'MS' else 0
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    outputs = outputs.to(torch.float64)
-                    cls_y  = cls_y.to(torch.float64)
-                    loss = criterion(outputs, cls_y)
+                    if self.args.classifier:
+                        loss = criterion(outputs, cls_y)
+                    else:
+                        loss = criterion(outputs, batch_y)
                     train_loss.append(loss.item())
 
                 if (i + 1) % 100 == 0:
@@ -211,8 +230,14 @@ class Exp_Main(Exp_Basic):
         self.model.load_state_dict(torch.load(best_model_path))
 
         return self.model
-
+    
     def test(self, setting, test=0):
+        if self.args.classifier:
+            self.test_classifier(setting, test=test)
+        else:
+            self.test_triple_barrier(setting, test=test)
+
+    def test_classifier(self, setting, test=0):
         test_data, test_loader = self._get_data(flag='test')
         if test:
             print('loading model')
@@ -314,6 +339,168 @@ class Exp_Main(Exp_Basic):
         df.to_csv(folder_path + 'predictions_Exp_{}_{}.csv'.format(self.args.ii, self.args.test_end_str))
 
         return
+    
+
+    def test_triple_barrier(self, setting, test=0):
+        test_data, test_loader = self._get_data(flag='test')
+        if test:
+            print('loading model')
+            self.model.load_state_dict(torch.load(os.path.join('./checkpoints/' + setting, 'checkpoint.pth')))
+
+        max_pred_price_list = []
+        min_pred_price_list = []
+        last_close_price_list = []
+        barrier_list = []
+        preds = []
+        trues = []
+        time_indices = []
+        folder_path = './test_results/' + setting + '/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+
+        self.model.eval()
+        with torch.no_grad():
+            for i, (batch_x, batch_y, batch_x_mark, batch_y_mark, cls_y, time_index) in enumerate(test_loader):
+                batch_x = batch_x.float().to(self.device)
+                batch_y = batch_y.float().to(self.device)
+
+                batch_x_mark = batch_x_mark.float().to(self.device)
+                batch_y_mark = batch_y_mark.float().to(self.device)
+                cls_y = cls_y.to(self.device)
+
+                # decoder input
+                dec_inp = torch.zeros_like(batch_y[:, -self.args.pred_len:, :]).float()
+                dec_inp = torch.cat([batch_y[:, :self.args.label_len, :], dec_inp], dim=1).float().to(self.device)
+                # encoder - decoder
+                if self.args.use_amp:
+                    with torch.cuda.amp.autocast():
+                        if self.args.output_attention:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+                        else:
+                            outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+                else:
+                    if self.args.output_attention:
+                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)[0]
+
+                    else:
+                        outputs = self.model(batch_x, batch_x_mark, dec_inp, batch_y_mark)
+
+                f_dim = -1 if self.args.features == 'MS' else 0
+
+                last_close_price = batch_y[:,  -self.args.pred_len-1, :]
+                inverse_last_close_price = test_data.inverse_transform(last_close_price)[:,1]
+                last_close_price_list.append(inverse_last_close_price.tolist())
+
+                inverse_outputs = self.get_real_predictions(outputs, test_data)
+                close_price_pred = inverse_outputs[:, :, 1]
+                max_pred_price = close_price_pred.max(dim=1)[0].detach().cpu().numpy().tolist()
+                max_pred_price_list.append(max_pred_price)
+                min_pred_price = close_price_pred.min(dim=1)[0].detach().cpu().numpy().tolist()
+                min_pred_price_list.append(min_pred_price)
+                barrier = self.get_barrier_breached(inverse_last_close_price, close_price_pred)
+                barrier_list.append(barrier)
+
+                cls_y  = cls_y.to(torch.float64)
+                time_index = time_index.detach().cpu().numpy()
+                batch_y = cls_y.detach().cpu().numpy()
+                true = batch_y  # batch_y.detach().cpu().numpy()  # .squeeze()
+
+                true = np.squeeze(true.tolist()).tolist()
+                time_index = np.squeeze(time_index.tolist()).tolist()
+                trues.append(true)
+                time_indices.append(time_index)
+
+        trues = [item for sublist in trues for item in sublist]
+        max_pred_prices = [item for sublist in max_pred_price_list for item in sublist]
+        min_pred_prices = [item for sublist in min_pred_price_list for item in sublist]
+        last_close_prices = [item for sublist in last_close_price_list for item in sublist]
+        barriers = [item for sublist in barrier_list for item in sublist]
+        time_indices = [item for sublist in time_indices for item in sublist]
+        time_stamps = test_data.date_data[time_indices]
+        time_stamps = time_stamps.reshape(-1)
+        df = pd.DataFrame({'trues': trues, 'last_close_prices': last_close_prices,
+                           'max_pred_prices': max_pred_prices, 
+                           'min_pred_prices':min_pred_prices, 'barriers':barriers,
+                            'time_stamps': time_stamps})
+        
+        df['preds'] = df.apply(lambda x: 1 if x['barriers']=='top' else 0 if x['barriers']=='bottom' else 0.5, axis=1)
+
+
+        lower_bounds = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
+        upper_bounds = [1 - lower for lower in lower_bounds]
+        for lower_bound, upper_bound in zip(lower_bounds, upper_bounds):
+            self.accuracy_by_threshold(df, lower_bound, upper_bound)
+
+        # result save
+        folder_path = './results/' + setting + '/'
+        if not os.path.exists(folder_path):
+            os.makedirs(folder_path)
+        # mae, mse, rmse, mape, mspe = metric(preds, trues)
+        # print('mse:{}, mae:{}'.format(mse, mae))
+        f = open("result.txt", 'a')
+        f.write(setting + "  \n")
+        f.write('\n')
+        f.write('\n')
+        f.close()
+
+        # np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        np.save(folder_path + 'pred.npy', preds)
+        np.save(folder_path + 'true.npy', trues)
+        df.to_csv(folder_path + 'predictions_Exp_{}_{}.csv'.format(self.args.ii, self.args.test_end_str))
+
+        return
+
+    
+
+    def get_real_predictions(self, outputs, dataset):
+        '''
+        Inverse transform the predictions to get the real values
+        '''
+        tensor_2d = outputs.reshape(-1, outputs.size(2))
+        tensor_2d_np = tensor_2d.numpy()
+        inversed_np = dataset.inverse_transform(tensor_2d_np)
+        inversed_tensor_2d = torch.tensor(inversed_np)
+        inversed_tensor_3d = inversed_tensor_2d.view(outputs.shape)
+
+        return inversed_tensor_3d
+
+
+    def get_barrier_breached(self,inverse_last_close_price, close_price_pred):
+        '''
+        Find the first barrier breached by the predictions
+        '''
+        inverse_last_close_price_torch = torch.tensor(inverse_last_close_price)
+        inverse_last_close_price_2d = inverse_last_close_price_torch.unsqueeze(1).repeat(1, self.args.pred_len) 
+        price_ratio = close_price_pred/inverse_last_close_price_2d
+        barrier = self.find_first_barrier(price_ratio, self.args.barrier_threshold)
+        return barrier
+
+
+    def find_first_barrier(self,tensor, threshold):
+        # List to store the first deviating element for each row
+        first_breach = []
+
+        # Iterate through each row
+        for row in tensor:
+            # Calculate the absolute deviation from one
+            deviation = torch.abs(row - 1)
+
+            # Find the index of the first element with deviation greater than the threshold
+            indices = torch.where(deviation > threshold)[0]
+
+            # Check if any element meets the criterion and store the result
+            if len(indices) > 0:
+                first_index = indices[0].item()
+                first_element = row[first_index].item()
+                if first_element > 1:
+                    first_breach.append('top')
+                else:
+                    first_breach.append('bottom')
+            else:
+                first_breach.append('vertical')
+
+        return first_breach
+
 
     @staticmethod
     def accuracy_by_threshold(df, lower_bound, upper_bound):

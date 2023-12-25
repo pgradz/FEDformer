@@ -113,15 +113,15 @@ def main():
     # args.task_id = 'ETTh1'
     # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_720min.csv'
-    args.task_id = 'BTCUSDT_cusum002'
+    args.data_path = 'ETHUSDT_cusum002_005.csv'
+    args.task_id = 'ETHUSDT_cusum002_005'
     args.currency = 'BTCUSDT'
-    args.data = 'cryptoh1'
+    args.data = 'crytpo_triple_barrier'
     args.target = 'y_pred'
     args.features = 'M'
     args.seq_len = 96
     args.label_len = 48
-    args.pred_len = 1
+    args.pred_len = 24
     args.e_layers = 2
     args.d_layers = 1
     args.factor = 3
@@ -136,6 +136,7 @@ def main():
     args.itr = 3
     args.train_stride = 1
     args.model = 'FEDformer'
+    # lstm param
     args.hidden_size = 128
     args.input_size = 10
     # train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
@@ -144,9 +145,11 @@ def main():
     train_end = [datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
     val_end = [datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
     test_end = [datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
-    args.classifier = True
+    args.classifier = False
     # for debug
-    args.train_epochs = 10
+    args.train_epochs = 1
+    # triple barrier
+    args.barrier_threshold = 0.05
 
     print('Args in experiment:')
     print(args)
@@ -222,7 +225,7 @@ def main():
     run_analysis(args, setting)
     daily_records = os.path.join(args.root_path, f'{args.currency}_time_aggregated_1440min.csv')
     results_folder = './results/' + setting + '/'
-    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting)
+    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting,  cost=0.001)
     performance_evaluator.run()
 
 
