@@ -119,6 +119,8 @@ class Model(nn.Module):
             self.classifier = True
             self.classifier = nn.Linear(configs.dec_in, 1, bias=True)
             self.sigmoid = nn.Sigmoid()
+        else:
+            self.classifier = False
 
 
 
