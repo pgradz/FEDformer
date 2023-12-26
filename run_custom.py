@@ -93,7 +93,12 @@ def main():
     parser.add_argument('--gpu', type=int, default=0, help='gpu')
     parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
     parser.add_argument('--devices', type=str, default='0,1', help='device ids of multi gpus')
+    
+    parser.add_argument('--currency', type=str, default='ETHUSDT', help='cryptocurrency')
+    parser.add_argument('--classifier', action='store_true',  help='Pass to use classifier')
+    parser.add_argument('--barrier_threshold', type=float, default=0.05, help='triple barrier threshold')
 
+    
     args = parser.parse_args()
 
     # mps is not working
@@ -108,14 +113,10 @@ def main():
         args.gpu = args.device_ids[0]
 
     # overwrite args
-    # args.root_path = './dataset/ETT-small/'
-    # args.data_path = 'ETTh1.csv'
-    # args.task_id = 'ETTh1'
-    # args.data = 'ETTh1'
     args.root_path = './dataset/crypto/'
-    args.data_path = 'BTCUSDT_720min.csv'
-    args.task_id = 'BTCUSDT_720min'
-    args.currency = 'BTCUSDT'
+    # args.data_path = 'BTCUSDT_720min.csv'
+    # args.task_id = 'BTCUSDT_720min_c_out32'
+    # args.currency = 'BTCUSDT'
     args.data = 'cryptoh1'
     args.target = 'y_pred'
     args.features = 'M'
@@ -135,24 +136,21 @@ def main():
     args.d_model = 512
     args.itr = 3
     args.train_stride = 1
-    args.model = 'FEDformer'
-    # lstm param
-    args.hidden_size = 128
-    args.input_size = 10
+    # args.model = 'FEDformer'
+
     train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
     val_end = [datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
     test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
-    args.classifier = True
+    # args.classifier = True
     # for debug
-    args.train_epochs = 1
+    # args.train_epochs = 10
     # triple barrier
-    args.barrier_threshold = 0.05
+    # args.barrier_threshold = 0.05
 
     print('Args in experiment:')
     print(args)
 
     Exp = Exp_Main
-    # Exp = Exp_Seq2Seq
     
     for j, dates in enumerate(zip(train_end, val_end, test_end)):
         args.train_end = dates[0]
