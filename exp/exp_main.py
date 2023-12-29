@@ -107,7 +107,8 @@ class Exp_Main(Exp_Basic):
                     if num_nans > 0:
                         print('Warning: {} NaNs in validation'.format(num_nans))
                         outputs[nan_mask] = 0.5
-
+                    if outputs.shape == torch.Size([1]):
+                        outputs = outputs.unsqueeze(1)
                     pred = outputs.detach().cpu()
                     true = cls_y.detach().cpu()
                     predicted_class = (pred > 0.5).float()
@@ -190,6 +191,8 @@ class Exp_Main(Exp_Basic):
 
                     f_dim = -1 if self.args.features == 'MS' else 0
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
+                    if outputs.shape == torch.Size([1]):
+                        outputs = outputs.unsqueeze(1)
                     if self.args.classifier:
                         loss = criterion(outputs, cls_y)
                     else:
