@@ -114,9 +114,9 @@ def main():
 
     # overwrite args
     args.root_path = './dataset/crypto/'
-    # args.data_path = 'BTCUSDT_720min.csv'
-    # args.task_id = 'BTCUSDT_720min_c_out32'
-    # args.currency = 'BTCUSDT'
+    # args.data_path = 'ETHUSDT_dollar100000000.csv'
+    # args.task_id = 'ETHUSDT_dollar100000000_c_out32'
+    # args.currency = 'ETHUSDT'
     args.data = 'cryptoh1'
     args.target = 'y_pred'
     args.features = 'M'
@@ -141,7 +141,10 @@ def main():
     train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
     val_end = [datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
     test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
-    # args.classifier = True
+    # train_end = [ datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
+    # val_end = [ datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
+    # test_end = [datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
+    args.classifier = True
     # for debug
     # args.train_epochs = 10
     # triple barrier
@@ -220,7 +223,7 @@ def main():
     run_analysis(args, setting)
     daily_records = os.path.join(args.root_path, f'{args.currency}_time_aggregated_1440min.csv')
     results_folder = './results/' + setting + '/'
-    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting,  cost=0.001)
+    performance_evaluator = PerformanceEvaluator(results_folder, daily_records_file=daily_records, name=setting,  cost=0.001)
     performance_evaluator.run()
 
 
