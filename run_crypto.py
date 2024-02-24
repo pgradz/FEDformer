@@ -21,7 +21,7 @@ def main():
 
     # basic config
     parser.add_argument('--is_training', type=int, default=1, help='status')
-    parser.add_argument('--task_id', type=str, default='test', help='task id')
+    parser.add_argument('--task_id', type=str, default='ETHUSDT_cusum002_005', help='task id')
     parser.add_argument('--model', type=str, default='FEDformer',
                         help='model name, options: [FEDformer, Autoformer, Informer, Transformer]')
 
@@ -38,12 +38,12 @@ def main():
 
     # data loader
     parser.add_argument('--data', type=str, default='ETTh1', help='dataset type')
-    parser.add_argument('--root_path', type=str, default='./dataset/ETT/', help='root path of the data file')
-    parser.add_argument('--data_path', type=str, default='ETTh1.csv', help='data file')
+    parser.add_argument('--root_path', type=str, default='./dataset/crypto/', help='root path of the data file')
+    parser.add_argument('--data_path', type=str, default='ETHUSDT_cusum002_005.csv', help='data file')
     parser.add_argument('--features', type=str, default='M',
                         help='forecasting task, options:[M, S, MS]; M:multivariate predict multivariate, '
                              'S:univariate predict univariate, MS:multivariate predict univariate')
-    parser.add_argument('--target', type=str, default='OT', help='target feature in S or MS task')
+    parser.add_argument('--target', type=str, default='y_pred', help='target feature in S or MS task')
     parser.add_argument('--freq', type=str, default='h',
                         help='freq for time features encoding, options:[s:secondly, t:minutely, h:hourly, d:daily, '
                              'b:business days, w:weekly, m:monthly], you can also use more detailed freq like 15min or 3h')
@@ -52,13 +52,13 @@ def main():
     # forecasting task
     parser.add_argument('--seq_len', type=int, default=96, help='input sequence length')
     parser.add_argument('--label_len', type=int, default=48, help='start token length')
-    parser.add_argument('--pred_len', type=int, default=96, help='prediction sequence length')
+    parser.add_argument('--pred_len', type=int, default=24, help='prediction sequence length')
     # parser.add_argument('--cross_activation', type=str, default='tanh'
 
     # model define
-    parser.add_argument('--enc_in', type=int, default=7, help='encoder input size')
-    parser.add_argument('--dec_in', type=int, default=7, help='decoder input size')
-    parser.add_argument('--c_out', type=int, default=7, help='output size')
+    parser.add_argument('--enc_in', type=int, default=32, help='encoder input size')
+    parser.add_argument('--dec_in', type=int, default=32, help='decoder input size')
+    parser.add_argument('--c_out', type=int, default=32, help='output size')
     parser.add_argument('--d_model', type=int, default=512, help='dimension of model')
     parser.add_argument('--n_heads', type=int, default=8, help='num of heads')
     parser.add_argument('--e_layers', type=int, default=2, help='num of encoder layers')
@@ -97,7 +97,7 @@ def main():
     parser.add_argument('--currency', type=str, default='ETHUSDT', help='cryptocurrency')
     parser.add_argument('--classifier', action='store_true',  help='Pass to use classifier')
     parser.add_argument('--barrier_threshold', type=float, default=0.05, help='triple barrier threshold')
-
+    parser.add_argument('--run_subtype', type=str, default='triple_barrier', help='triple_barrier or classifier')
     
     args = parser.parse_args()
 
@@ -112,43 +112,10 @@ def main():
         args.device_ids = [int(id_) for id_ in device_ids]
         args.gpu = args.device_ids[0]
 
-    # overwrite args
-    args.root_path = './dataset/crypto/'
-    # args.data_path = 'ETHUSDT_dollar100000000.csv'
-    # args.task_id = 'ETHUSDT_dollar100000000_c_out32'
-    # args.currency = 'ETHUSDT'
-    args.data = 'cryptoh1'
-    args.target = 'y_pred'
-    args.features = 'M'
-    args.seq_len = 96
-    args.label_len = 48
-    args.pred_len = 1
-    args.e_layers = 2
-    args.d_layers = 1
-    args.factor = 3
-    # args.enc_in = 7
-    # args.dec_in = 7
-    # args.c_out = 7
-    args.enc_in = 32
-    args.dec_in = 32
-    args.c_out = 32
-    args.des = 'Exp'
-    args.d_model = 512
-    args.itr = 3
-    args.train_stride = 1
-    # args.model = 'FEDformer'
-
     train_end = [datetime.datetime(2022, 1, 1, 0, 0, 0), datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
     val_end = [datetime.datetime(2022, 4, 1, 0, 0, 0), datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
     test_end = [datetime.datetime(2022, 7, 1, 0, 0, 0), datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
-    # train_end = [ datetime.datetime(2022, 10, 1, 0, 0, 0), datetime.datetime(2023, 1, 1, 0, 0, 0)]
-    # val_end = [ datetime.datetime(2023, 1, 1, 0, 0, 0), datetime.datetime(2023, 4, 1, 0, 0, 0)]
-    # test_end = [datetime.datetime(2023, 4, 1, 0, 0, 0), datetime.datetime(2023, 7, 1, 0, 0, 0)]
-    args.classifier = True
-    # for debug
-    # args.train_epochs = 10
-    # triple barrier
-    # args.barrier_threshold = 0.05
+
 
     print('Args in experiment:')
     print(args)
@@ -164,7 +131,7 @@ def main():
             for ii in range(args.itr):
                 args.ii = ii
                 # setting record of experiments
-                setting = '{}_{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(
+                setting = '{}_{}_{}_{}_max_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(
                     args.task_id,
                     args.run_subtype,
                     args.model,
