@@ -53,7 +53,7 @@ def data_provider(args, flag):
     print(flag, len(data_set))
 
     if flag == 'train':
-        train_indices = torch.tensor(np.arange(stop=len(data_set),step=args.train_stride))
+        train_indices = torch.tensor(np.arange(stop=len(data_set),step=1))
         data_set = Subset(data_set, train_indices)
 
 

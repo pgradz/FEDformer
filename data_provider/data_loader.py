@@ -554,9 +554,10 @@ class Dataset_crypto_triple_barrier(Dataset):
                                           self.data_path), parse_dates=['datetime'])
         df_raw.rename(columns={'datetime':'date'}, inplace=True)
         #time related features are added later
-        df_raw.drop(columns=['hour_sin','hour_cos','weekday_sin','weekday_cos',
+        columns_to_drop = [col for col in ['hour_sin','hour_cos','weekday_sin','weekday_cos',
                              'prc_change','barrier_touched','barrier_touched_date',
-                             'top_barrier','bottom_barrier','time_step'], inplace=True)
+                             'top_barrier','bottom_barrier','time_step'] if col in df_raw.columns]
+        df_raw.drop(columns=columns_to_drop, inplace=True)
         
         target_index = df_raw.columns.get_loc("y_pred")
         df_raw.dropna(inplace=True)
@@ -578,6 +579,7 @@ class Dataset_crypto_triple_barrier(Dataset):
             df_data = df_raw[cols_data]
             # target_index = target_index - 1
         elif self.features == 'S':
+            self.target = 'close'
             df_data = df_raw[[self.target]]
 
         if self.scale:

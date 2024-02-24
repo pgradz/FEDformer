@@ -83,14 +83,22 @@ class Exp_Main(Exp_Basic):
                 cls_y  = cls_y.to(torch.float64)
 
                 if not self.args.classifier:
-                    # close price is at position 1
-                    last_close_price = batch_y[:,  -self.args.pred_len-1, 1].to(self.device)
+                    # close price is at position 1 for multivariate time series
+                    if self.args.features == 'M':
+                        last_close_price = batch_y[:,  -self.args.pred_len-1, 1].to(self.device)
+                        close_price_pred = outputs[:, :, 1]
+                    else:
+                        last_close_price = batch_y[:,  -self.args.pred_len-1, :].to(self.device)
+                        close_price_pred = outputs[:, :, :]
                     batch_y = batch_y[:, -self.args.pred_len:, f_dim:].to(self.device)
-                    close_price_pred = outputs[:, :, 1]
+                   
                     positive_diff = abs(close_price_pred.max(dim=1)[0] - last_close_price)
                     negative_diff = abs(close_price_pred.min(dim=1)[0] - last_close_price)
                     direction = (positive_diff > negative_diff).float()
-                    direction = direction.unsqueeze(1)
+                    if direction.dim() < 2:
+                        direction = direction.unsqueeze(1).detach().cpu()
+                    else:
+                        direction = direction.detach().cpu()
                     true_cls = cls_y.detach().cpu()
                     total += true_cls.size(0)
                     correct += (direction == true_cls).sum().item()
@@ -392,12 +400,22 @@ class Exp_Main(Exp_Basic):
 
                 f_dim = -1 if self.args.features == 'MS' else 0
 
+                batch_y = batch_y.detach().cpu()
                 last_close_price = batch_y[:,  -self.args.pred_len-1, :]
-                inverse_last_close_price = test_data.inverse_transform(last_close_price)[:,1]
-                last_close_price_list.append(inverse_last_close_price.tolist())
+                
+                inverse_last_close_price = test_data.inverse_transform(last_close_price)
+                if self.args.features == 'M':
+                    inverse_last_close_price = inverse_last_close_price[:,1]
+                else:
+                    inverse_last_close_price = inverse_last_close_price[:,0]
 
+                last_close_price_list.append(inverse_last_close_price.tolist())
                 inverse_outputs = self.get_real_predictions(outputs, test_data)
-                close_price_pred = inverse_outputs[:, :, 1]
+                
+                if self.args.features == 'M':
+                    close_price_pred = inverse_outputs[:, :, 1]
+                else:
+                    close_price_pred = inverse_outputs[:,:,0]
                 max_pred_price = close_price_pred.max(dim=1)[0].detach().cpu().numpy().tolist()
                 max_pred_price_list.append(max_pred_price)
                 min_pred_price = close_price_pred.min(dim=1)[0].detach().cpu().numpy().tolist()
@@ -414,13 +432,26 @@ class Exp_Main(Exp_Basic):
                 time_index = np.squeeze(time_index.tolist()).tolist()
                 trues.append(true)
                 time_indices.append(time_index)
+    
 
-        trues = [item for sublist in trues for item in sublist]
+        trues_list = [item if isinstance(item, list) else [item] for item in trues]
+        trues = [item for sublist in trues_list for item in sublist]
+        max_pred_prices_list = [item if isinstance(item, list) else [item] for item in max_pred_price_list]
         max_pred_prices = [item for sublist in max_pred_price_list for item in sublist]
+        min_pred_prices_list = [item if isinstance(item, list) else [item] for item in min_pred_price_list]
         min_pred_prices = [item for sublist in min_pred_price_list for item in sublist]
-        last_close_prices = [item for sublist in last_close_price_list for item in sublist]
+        last_close_prices_list = [item if isinstance(item, list) else [item] for item in last_close_price_list]
+        last_close_prices = [item for sublist in last_close_prices_list for item in sublist]
+        barrier_list = [item if isinstance(item, list) else [item] for item in barrier_list]
         barriers = [item for sublist in barrier_list for item in sublist]
-        time_indices = [item for sublist in time_indices for item in sublist]
+
+        # trues = [item  for sublist in trues for item in sublist]
+        # max_pred_prices = [item for sublist in max_pred_price_list for item in sublist]
+        # min_pred_prices = [item for sublist in min_pred_price_list for item in sublist]
+        # last_close_prices = [item for sublist in last_close_price_list for item in sublist]
+        # barriers = [item for sublist in barrier_list for item in sublist]
+        time_indices_list = [item if isinstance(item, list) else [item] for item in time_indices]
+        time_indices = [item for sublist in time_indices_list for item in sublist]
         time_stamps = test_data.date_data[time_indices]
         time_stamps = time_stamps.reshape(-1)
         df = pd.DataFrame({'trues': trues, 'last_close_prices': last_close_prices,
@@ -461,7 +492,7 @@ class Exp_Main(Exp_Basic):
         '''
         Inverse transform the predictions to get the real values
         '''
-        tensor_2d = outputs.reshape(-1, outputs.size(2))
+        tensor_2d = outputs.reshape(-1, outputs.size(2)).detach().cpu()
         tensor_2d_np = tensor_2d.numpy()
         inversed_np = dataset.inverse_transform(tensor_2d_np)
         inversed_tensor_2d = torch.tensor(inversed_np)
@@ -478,8 +509,16 @@ class Exp_Main(Exp_Basic):
         inverse_last_close_price_2d = inverse_last_close_price_torch.unsqueeze(1).repeat(1, self.args.pred_len) 
         price_ratio = close_price_pred/inverse_last_close_price_2d
         barrier = self.find_first_barrier(price_ratio, self.args.barrier_threshold)
+        # barrier = self.get_max_barrier(price_ratio)
         return barrier
 
+    def get_max_barrier(self, price_ratio):
+
+        max_ratio = abs(price_ratio.max(dim=1)[0]-1)
+        min_ratio = abs(price_ratio.min(dim=1)[0]-1)
+        direction = (max_ratio > min_ratio).tolist()
+        barrier = ['top' if element else 'bottom' for element in direction]
+        return barrier
 
     def find_first_barrier(self,tensor, threshold):
         # List to store the first deviating element for each row

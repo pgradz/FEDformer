@@ -84,6 +84,8 @@ class Model(nn.Module):
             self.classifier = True
             self.classifier = nn.Linear(configs.dec_in, 1, bias=True)
             self.sigmoid = nn.Sigmoid()
+        else:
+            self.classifier = False
 
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec,
                 enc_self_mask=None, dec_self_mask=None, dec_enc_mask=None):
