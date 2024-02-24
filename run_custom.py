@@ -164,8 +164,9 @@ def main():
             for ii in range(args.itr):
                 args.ii = ii
                 # setting record of experiments
-                setting = '{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(
+                setting = '{}_{}_{}_{}_modes{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}'.format(
                     args.task_id,
+                    args.run_subtype,
                     args.model,
                     args.mode_select,
                     args.modes,
@@ -223,7 +224,7 @@ def main():
     run_analysis(args, setting)
     daily_records = os.path.join(args.root_path, f'{args.currency}_time_aggregated_1440min.csv')
     results_folder = './results/' + setting + '/'
-    performance_evaluator = PerformanceEvaluator(results_folder, daily_records_file=daily_records, name=setting,  cost=0.001)
+    performance_evaluator = PerformanceEvaluator(results_folder, daily_records, name=setting,  cost=0.001)
     performance_evaluator.run()
 
 
