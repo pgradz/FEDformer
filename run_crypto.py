@@ -37,7 +37,7 @@ def main():
                         help='mwt cross atention activation function tanh or softmax')
 
     # data loader
-    parser.add_argument('--data', type=str, default='ETTh1', help='dataset type')
+    parser.add_argument('--data', type=str, default='crytpo_triple_barrier', help='dataset type')
     parser.add_argument('--root_path', type=str, default='./dataset/crypto/', help='root path of the data file')
     parser.add_argument('--data_path', type=str, default='ETHUSDT_cusum002_005.csv', help='data file')
     parser.add_argument('--features', type=str, default='M',
